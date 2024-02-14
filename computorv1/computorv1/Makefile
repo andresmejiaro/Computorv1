@@ -6,11 +6,11 @@
 #    By: amejia <amejia@student.42.fr>              +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/10 18:04:55 by amejia            #+#    #+#              #
-#    Updated: 2024/02/11 13:49:28 by amejia           ###   ########.fr        #
+#    Updated: 2024/02/14 11:25:00 by amejia           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-NAME = computorv1
+NAME = computor
 SRCS = main.rs src parsing.rs polinomial.rs
 
 all: $(NAME)

@@ -73,7 +73,7 @@ fn monomial_parser(textmon: &str)-> (f64,usize){
     if !textmon.contains("*") && !textmon.contains("^") && !textmon.contains("x"){
         return (textmon.parse().unwrap(),0);
     }
-    if !textmon.contains("*"){
+    if !textmon.contains("*") && !textmon.chars().next().map_or(false, |c| c.is_digit(10)){
         coef = 1.0;
         text1 = textmon;
     }
@@ -81,7 +81,7 @@ fn monomial_parser(textmon: &str)-> (f64,usize){
         let split1: Vec<&str> = textmon.split("*").collect();
         if split1.len() != 2{
             println!("Wrongly formed term: {}", textmon);
-            println!("Make sure to put spaces surrounding + and - operators");
+            println!("Make sure to include * to separate coeficients and variables");
             process::exit(1);
         }
         coef = split1[0].parse().unwrap();
