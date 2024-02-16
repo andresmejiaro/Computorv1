@@ -2,6 +2,18 @@ use std::process;
 
 use crate::polinomial::Polinomial;
 
+struct ParserState{
+    coef: f64,
+    coef_sign: f64,
+    caret_appeared: bool,
+    x_apeared: bool,
+    power: usize,
+    mult_apeared: bool,
+    coef_parsed: bool,
+    power_parsed: bool,
+}
+
+
 pub fn parser (equation : &str)-> (Polinomial, Polinomial){
     if !equation.contains("="){
         println!("Equations should be separated by a \"=\"");
@@ -24,8 +36,16 @@ pub fn parser (equation : &str)-> (Polinomial, Polinomial){
 
 fn preprocess_parser(textpoly: &str)-> String{
     let mut to_return = String::new();
+    to_return.push_str("| ");
     for i in textpoly.chars(){
         if i == '+' || i == '-' {
+            to_return.push(' ');
+            to_return.push('|');
+            to_return.push(' ');
+            to_return.push(i);
+            to_return.push(' ');
+        }
+        else if i == '*' || i == '^' || i == 'X' {
             to_return.push(' ');
             to_return.push(i);
             to_return.push(' ');
@@ -39,65 +59,119 @@ fn preprocess_parser(textpoly: &str)-> String{
 
 fn poly_parser(textpoly: &str)->Polinomial{
     let textpoly2 = preprocess_parser(textpoly);
+    //println!("{textpoly2}");
     let monomials_text: Vec<&str> = textpoly2.split_whitespace().collect(); 
     let mut to_return = Polinomial::new( vec![0.0]);
-    let mut cnt = 0;
-    let mut mult = 1.0;
+    let mut parser_state = ParserState {coef: 0.0, coef_sign: 1.0,
+        caret_appeared: false,x_apeared: false,  power: 0, mult_apeared: false, 
+        coef_parsed: true, power_parsed:false};
     for mon in monomials_text{
-        if cnt % 2 == 0{
-            let (coef, deg) = monomial_parser(mon.trim());
-            to_return.set_coef(mult * coef, deg);
-        }
-        else {
-            mult = match mon {
-                "+" => 1.0,
-                "-" => -1.0,
-                _ => {
-                    println!("Expected a sign: {}", mon);
-                    std::process::exit(1);
+        match  mon {
+            "|" => {
+                if !parser_state.coef_parsed {
+                    println!("There seems to be repeated signs or other unexpected behavior");
+                    parse_error(textpoly, "")
+                }
+
+                update_polynomial(&parser_state, &mut to_return);
+                initialize_parser_state(&mut parser_state);
+            }
+            "+" => {
+                if parser_state.caret_appeared || parser_state.mult_apeared ||
+                parser_state.x_apeared || parser_state.coef_parsed {
+                    parse_error(textpoly, mon);
+                }
+            }
+            "-" => {
+                if parser_state.caret_appeared || parser_state.mult_apeared ||
+                parser_state.x_apeared || parser_state.coef_parsed{
+                    parse_error(textpoly, mon);
+                }
+                parser_state.coef_sign *= -1.0;
+            }
+            "X" => {
+                if parser_state.caret_appeared || parser_state.x_apeared
+                {
+                    parse_error(textpoly, mon);
+                }
+                if !parser_state.coef_parsed{
+                    parser_state.coef = 1.0;
+                    parser_state.coef_parsed = true;
+                }
+                parser_state.power = 1;
+                parser_state.x_apeared = true;
+            }
+            "^" =>{
+                if !parser_state.x_apeared || parser_state.caret_appeared
+                {
+                    parse_error(textpoly, mon);
+                }
+                parser_state.caret_appeared = true;
+                
+            }
+            "*" =>{ 
+                if !parser_state.coef_parsed || parser_state.mult_apeared{
+                    parse_error(textpoly, mon);
+                }
+                parser_state.mult_apeared = true;
+            }
+            mon => {
+                if mon.chars().all(|c| c.is_digit(10) || c == '.'){
+                    if !parser_state.caret_appeared && !parser_state.coef_parsed{
+                        parser_state.coef = match mon.parse::<f64>(){
+                            Ok (num) => num,
+                            Err(_) => {
+                                println!("Failing to parse {mon} as a coefficient");
+                                parse_error(textpoly, mon);
+                                1.0
+                            }
+                        };
+                        parser_state.coef_parsed = true;
+                    } else if !parser_state.caret_appeared && parser_state.coef_parsed{
+                        parse_error(textpoly, mon);
+                    } else if !parser_state.power_parsed {
+                        parser_state.power = match mon.parse::<usize>() {
+                            Ok (num) => num,
+                            Err(_) => {
+                                println!("Failing to parse {mon} as an exponent");
+                                parse_error(textpoly, mon);
+                                1
+                            }
+                        };
+                        parser_state.power_parsed = true;
+                    } else {
+                        parse_error(textpoly, mon);
+                    }
+                } else {
+                    parse_error(textpoly,mon);
                 }
             }
         }
-        cnt += 1;
     }
-    // for mon in monomials_text{
-    //     let (coef, deg) = monomial_parser(&mon);
-    //     to_return.set_coef(coef,deg);
-    // }
+
+    update_polynomial(&parser_state, &mut to_return);
     return to_return;
 }
 
-fn monomial_parser(textmon: &str)-> (f64,usize){
-    let coef;
-    let text1: &str;
-    if !textmon.contains("*") && !textmon.contains("^") && !textmon.contains("x"){
-        return (textmon.parse().unwrap(),0);
-    }
-    if !textmon.contains("*") && !textmon.chars().next().map_or(false, |c| c.is_digit(10)){
-        coef = 1.0;
-        text1 = textmon;
-    }
-     else{
-        let split1: Vec<&str> = textmon.split("*").collect();
-        if split1.len() != 2{
-            println!("Wrongly formed term: {}", textmon);
-            println!("Make sure to include * to separate coeficients and variables");
-            process::exit(1);
-        }
-        coef = split1[0].parse().unwrap();
-        text1 = split1[1];
-    }
-    let deg;
-    if  !text1.contains("^"){
-        deg = 1;
-    }
-    else{
-        let split2: Vec<&str> = text1.split("^").collect();
-        if split2.len() != 2{
-            println!("Wrongly formed monomial: {}", textmon);
-            process::exit(1);
-        }
-        deg = split2[1].parse().unwrap();
-    }
-    return (coef,deg);
+fn parse_error(textpoly: &str, mon: &str){
+    println!("Parsing error in {textpoly} near {mon}");
+    std::process::exit(1);
+}
+
+
+fn initialize_parser_state(parser_state: &mut ParserState){
+    parser_state.coef = 0.0;
+    parser_state.coef_sign = 1.0;
+    parser_state.caret_appeared = false;
+    parser_state.x_apeared = false;
+    parser_state.power = 0;
+    parser_state.mult_apeared = false;
+    parser_state.coef_parsed =false;
+    parser_state.power_parsed = false;
+
+}
+
+fn update_polynomial(parser_state: &ParserState, polinomial: &mut Polinomial){
+    polinomial.update_coef(parser_state.coef*parser_state.coef_sign, parser_state.power);
+    
 }
