@@ -16,8 +16,9 @@ fn main() {
     let (lhs, rhs) = 
         parsing::parser(&uargs[1]);
     let mut eq = lhs -rhs;
-    eq.normalize();
     println!("Reduced form: {} = 0", eq);
+    eq.normalize();
     println!("Polinomial degree: {}", eq.degree());
     eq.solver_msg();
 }
+
