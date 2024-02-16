@@ -21,6 +21,15 @@ impl Polinomial
         self.coefficients[grade] = coef;
     }
 
+    pub fn update_coef(&mut self, coef: f64, grade: usize ) {
+        if grade > self.degree(){
+            self.set_coef(coef, grade);
+        }
+        else {
+            self.set_coef(coef+ self.coefficients[grade], grade)     
+        }
+    }
+
     pub fn degree(&self) -> usize{
         return self.coefficients.len() - 1;
     }
@@ -48,15 +57,15 @@ impl Polinomial
             println!("Discriminant is negative, the solutions are complex:");          
             let sol1 = Polinomial::new(vec![discr,0.0, 1.0]);
             let impart = sol1.newton(-discr);
-            println!("{:.3} + {:.3}i",-0.5* self.coefficients[1],impart);
-            println!("{:-.3} - {:.3}i",-0.5* self.coefficients[1],impart);
+            println!("{:.6} + {:.6}i",-0.5* self.coefficients[1],impart);
+            println!("{:-.6} - {:.6}i",-0.5* self.coefficients[1],impart);
         }  else if discr == 0.0 {
             println!("Discriminant is zero, the solution is:");          
             println!("{}:", -0.5* self.coefficients[1]);           
         } else {
             println!("Discriminant is strictly positive, the two solutions are:");
-            println!("{:.3}", self.newton(-0.5 * self.coefficients[1]+discr));
-            println!("{:.3}", self.newton(-0.5 * self.coefficients[1]-discr));
+            println!("{:.6}", self.newton(-0.5 * self.coefficients[1]+discr));
+            println!("{:.6}", self.newton(-0.5 * self.coefficients[1]-discr));
         }
     }
 
@@ -90,10 +99,10 @@ impl Polinomial
                 }
             };
             println!("Solving equation {} = 0", self);
-            println!("Starting with newton iterations at {:.3}", start_point);
+            println!("Starting with newton iterations at {:.6}", start_point);
             let solved = self.newton(start_point);
-            println!("I get {:.3}", solved);
-            println!("the polynomial evaluated at that point is: {:.3}", self.evaluate(solved));
+            println!("I get {:.6}", solved);
+            println!("the polynomial evaluated at that point is: {:.5}", self.evaluate(solved));
             println!("IF the value above is (very close to) zero we found a solution!");
 
         }
@@ -148,7 +157,7 @@ impl Polinomial
         let deriv = self.derivative();
         for it in 1..1000 {
             let ev = self.evaluate(current);
-            if ev*ev < 1.0e-10{
+            if ev*ev < 1.0e-15{
                break
             }
             current = current - self.evaluate(current)/deriv.evaluate(current);
@@ -212,7 +221,6 @@ impl Sub for Polinomial
         }
         let acoef = acoef.iter().zip(bcoef.iter()).
                                 map(|(&x, &y)| x - y).collect();
-
         return Polinomial::new(acoef);
     }
 }
@@ -227,9 +235,8 @@ impl fmt::Display for Polinomial
         if len == 1 && self.coefficients[0] == 0.0{
             write!(f,"0")
         } else {
-            for (rev_index, coef) in 
-                    self.coefficients.iter().rev().enumerate(){
-                let index = len - 1 - rev_index;
+            for (index, coef) in 
+                    self.coefficients.iter().enumerate(){
                 if *coef == 0.0 {
                     continue;
                 }
@@ -244,10 +251,17 @@ impl fmt::Display for Polinomial
                 }
                 if index == 0{
                     result.push_str(&format!("{}", adj*coef));
-                } else if adj*coef != 1.0 {
-                result.push_str(&format!("{}*x^{}", adj*coef, index));  
+                } 
+                else if index == 1 && adj*coef == 1.0 {
+                    result.push_str(&format!("X"));  
+                }
+                else if index == 1 {
+                    result.push_str(&format!("{} * X", adj*coef));  
+                }
+                else if adj*coef != 1.0 {
+                result.push_str(&format!("{} * X^{}", adj*coef, index));  
                 } else {
-                    result.push_str(&format!("x^{}", index));  
+                    result.push_str(&format!("X^{}", index));  
 
                 }
 
