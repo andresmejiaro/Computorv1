@@ -56,6 +56,7 @@ fn preprocess_parser(textpoly: &str) -> String {
             to_return.push(i);
         }
     }
+	//to_return.push('|');
     to_return
 }
 
@@ -166,6 +167,12 @@ fn poly_parser(textpoly: &str) -> Polinomial {
             }
         }
     }
+	if !parser_state.coef_parsed
+	|| (parser_state.caret_appeared && !parser_state.power_parsed)
+	{
+		println!("There seems to be repeated signs or other unexpected behavior");
+		parse_error(textpoly, "")
+	}
 
     update_polynomial(&parser_state, &mut to_return);
     return to_return;
